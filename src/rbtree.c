@@ -2,43 +2,40 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void postorder_delete_node(rbtree *,node_t *);
+void delete_node(rbtree *,node_t *);
 
 rbtree *new_rbtree(void) {
-  printf("뉴 알비트리 에 들어왔습니다\n");
+
   rbtree *p = (rbtree *)calloc(1, sizeof(rbtree));
-  // TODO: initialize struct if needed
-  printf("p 선언 \n");
-  
   p->nil = (node_t *)calloc(1, sizeof(node_t)); 
   p->root = p->nil; 
   p->nil->color = RBTREE_BLACK;
-  printf("root, nil \n");
   return p;
 }
 
 void delete_rbtree(rbtree *t) {
-  // TODO: reclaim the tree nodes's memory
-	printf("딜리트에 들어왔습니다.");
-	// postorder_delete_node(t,t->root);
+	
+	delete_node(t,t->root);
+
 	free(t);
 }
 
-void postorder_delete_node(rbtree *t, node_t *curNode){
+void delete_node(rbtree *t, node_t *curNode){
+	if(curNode == t->nil) {
+		return;
+	}
 	
-	if (curNode->left != t->nil) postorder_delete_node(t, curNode->left);
-	if (curNode->right!= t->nil) postorder_delete_node(t, curNode->right);
+	delete_node(t, curNode->left);
+	delete_node(t, curNode->right);
+
 	free(curNode);
-	printf("free curNode %d", curNode->key);
-	
 }
 
-node_t *rotateLeft(rbtree *t, node_t *node, int checker){
-
+node_t *rotateLeft(rbtree *t, node_t *node){
 	node_t *p_node = node->parent;
 	node_t *gp_node = node->parent->parent;
 	// p node는 왼쪽 
-	if(checker > 0){
+	if(p_node == gp_node->left){
 		
 		gp_node->left = node;
 		node->parent = gp_node;
@@ -53,13 +50,15 @@ node_t *rotateLeft(rbtree *t, node_t *node, int checker){
 
 	// p node는 오른쪽	
 	} else {
-		p_node->color = RBTREE_BLACK;
-		gp_node->color = RBTREE_RED;
 		
 		p_node->parent = gp_node->parent;
 
 		if (p_node->parent != t->nil){
-			gp_node->parent->right = p_node;
+			if(gp_node->parent->left == gp_node){
+				gp_node->parent->left = p_node;
+			} else {
+				gp_node->parent->right = p_node;
+			}
 		} else {
 			t->root = p_node;
 		}
@@ -74,18 +73,20 @@ node_t *rotateLeft(rbtree *t, node_t *node, int checker){
 	}
 
 }
-node_t *rotateRight(rbtree *t, node_t *node, int checker){
+node_t *rotateRight(rbtree *t, node_t *node){
 	node_t *p_node = node->parent;
 	node_t *gp_node = node->parent->parent;
 	// pnode 왼쪽
-	if(checker > 0){
-		p_node->color = RBTREE_BLACK;
-		gp_node->color = RBTREE_RED;
+	if(p_node == gp_node->left){
 		
 		p_node->parent = gp_node->parent;
 
 		if (p_node->parent != t->nil){
-			gp_node->parent->left = p_node;
+			if(gp_node->parent->left == gp_node){
+				gp_node->parent->left = p_node;
+			} else {
+				gp_node->parent->right = p_node;
+			}
 		} else {
 			t->root = p_node;
 		}
@@ -123,7 +124,6 @@ node_t *change_color(rbtree *t, node_t *node){
 
 node_t *rbtree_insert(rbtree *t, const key_t key) {
   printf("%d가 인서트에 들어왔습니다\n", key);
-  // TODO: implement insert
   // 맨 처음 들어갈 때는 root 에 key를 저장, 루트의 색을 확인해야함.
   node_t *new_node =  (node_t *)calloc(1, sizeof(node_t));
   
@@ -187,16 +187,14 @@ node_t *rbtree_insert(rbtree *t, const key_t key) {
 		printf("current cursor key : %d\n", cursor->key);
 		node_t *p_node = cursor->parent; 
 		node_t *gp_node = cursor->parent->parent;
-		cnt += 1;
-
-		if( cnt == 10 ){
-			break;
-		}
 		
 		int checker = gp_node->key - p_node->key;
 		int checker2 = p_node->key - cursor->key;
-
-		printf("checker %d, checker %d\n",checker, checker2);
+		cnt += 1;
+		if(cnt == 20){
+			break;
+		}
+		printf("checker %d, checker2 %d\n",checker, checker2);
 		// CASE1 부모와 삼촌이 색깔이 같은가? 빨간색인가
 		if((gp_node->left->color == RBTREE_RED) & (gp_node->right->color == RBTREE_RED)){
 			printf("case 1\n");
@@ -205,28 +203,36 @@ node_t *rbtree_insert(rbtree *t, const key_t key) {
 					
 		// CASE 2 삼촌은 검정이고 부모와 나의 방향이 같다.
 		// 둘다 left
-		else if ((checker > 0) & (checker2 > 0) & (gp_node->right->color == RBTREE_BLACK)){
+		else if ((checker >= 0) & (checker2 >= 0) & (gp_node->right->color == RBTREE_BLACK)){
 			printf("case 2-1\n");
-			cursor = rotateRight(t, cursor, checker);
+			
+			p_node->color = RBTREE_BLACK;
+			gp_node->color = RBTREE_RED;
+
+			cursor = rotateRight(t, cursor);
 		}
 
 		// 둘다 right
-		else if ((checker < 0) & (checker2 < 0) & (gp_node->left->color == RBTREE_BLACK)){
+		else if ((checker <= 0) & (checker2 <= 0) & (gp_node->left->color == RBTREE_BLACK)){
 			printf("case 2-2\n");
-			cursor = rotateLeft(t, cursor, checker);
+			
+			p_node->color = RBTREE_BLACK;
+			gp_node->color = RBTREE_RED;
+
+			cursor = rotateLeft(t, cursor);
 		}
 
 		// CASE 3 부모와 자식의 방향이 다를경우
 		// 부모 left 자식 right
-		else if ((checker > 0) & (checker2 < 0) & (gp_node->right->color == RBTREE_BLACK)){
+		else if ((checker >= 0) & (checker2 <= 0) & (gp_node->right->color == RBTREE_BLACK)){
 			printf("case 3-1\n");
-			cursor = rotateLeft(t, cursor, checker);
+			cursor = rotateLeft(t, cursor);
 		}
 
 		// 부모 right 자식 left
-		else if ((checker < 0) & (checker2 > 0) & (gp_node->left->color == RBTREE_BLACK)){
+		else if ((checker <= 0) & (checker2 >= 0) & (gp_node->left->color == RBTREE_BLACK)){
 			printf("case 3-2\n");
-			cursor = rotateRight(t, cursor, checker);
+			cursor = rotateRight(t, cursor);
 		}
 		t->root->color = RBTREE_BLACK;
 	}
@@ -236,17 +242,22 @@ node_t *rbtree_insert(rbtree *t, const key_t key) {
 node_t *rbtree_find(const rbtree *t, const key_t key) {
     printf("파인드에 들어왔습니다.:\n");
   // TODO: implement find
-	node_t *x = t->root;
+	node_t *cur_node = t->root;
 
-	while(x != t->nil){
-		if( x->key == key ){
-			return x;
+	while(cur_node != t->nil){
+		if( cur_node->key == key ){
+			if(cur_node->right->key == key){
+				cur_node = cur_node->right;
+			} else if (cur_node->left->key == key) {
+				cur_node = cur_node->left;	
+			}
+			return cur_node;
 		}
-		else if (x->key < key){
-			x = x->right;
+		else if (cur_node->key < key){
+			cur_node = cur_node->right;
 		}
-		else {
-			x = x->left;
+		else if (cur_node->key > key){
+			cur_node = cur_node->left;
 		}
 	}
   return NULL;
@@ -266,33 +277,296 @@ node_t *rbtree_min(const rbtree *t) {
 
 node_t *rbtree_max(const rbtree *t) {
   // TODO: implement find
-  return t->root;
+	node_t *x = t->root;
+	while(x != t->nil){
+		x = x->right;
+		if(x->right == t->nil){
+			break;
+		}
+	}	
+  return x;
+}
+
+/*
+void RB_transplant(rbtree *t, node_t *u, node_t *v) {
+	if(n->parent == t->nil) {
+		t->root = v;
+	} else if ( u == u->parent->left ) {
+		u->parent->left = v;
+	} else {
+		u->parent->right = v;
+		v->parent = u->parent;
+
+}
+
+
+int rbtree_erase (rbtree *t, node_t *n) {
+	node_t *tmp = n;
+	int tmp_origin_color = tmp->color;
+
+	if(n->left == t->nil) {
+	}
+}
+*/
+
+void check_double_black(rbtree *t,node_t *n){	
+	printf("into check double black\n");
+
+	if(n == t->root) {
+		t->root = t->nil;
+		return;
+	}
+	
+	while((n != t->root) & (n->color == RBTREE_BLACK)) {
+		node_t *p_node = n->parent;
+		
+		printf("와일문 아래 n 확인용 n = %d \n", n->key);
+		printf("와일문 아래 n 확인용 n->color = %d \n", n->color);
+		printf("parent node of n is %d \n " , p_node->key);
+		// n의 위치가 왼쪽	
+		if(n == p_node->left){
+			node_t *s_node = p_node->right; //형제노드
+			printf("n의 위치는 왼쪽 현재 노드와 형제 노드 : %d   %d   \n", n->key, s_node->key);
+			// 형제의 색깔이 빨강 CASE 4 
+			// 부모와 형제의 색을 바꾸고 왼쪽으로 회전시킨다.
+			if(s_node->color == RBTREE_RED){
+				p_node->color = RBTREE_BLACK;
+				s_node->color = RBTREE_RED;
+				
+				rotateLeft(t,s_node->right);
+				return;
+			// 형제의 색깔이 검정 
+			// 조카의 색깔이 둘다 검정? 왼쪽만 빨강? 오른쪽만 빨강? 으로 나뉜다.
+			} else {
+				// 오른쪽 조카의 색깔이 빨강
+				if(s_node->right->color == RBTREE_RED) {
+					s_node->color = p_node->color;
+					s_node->right->color = RBTREE_BLACK;
+					p_node->color = RBTREE_BLACK;
+
+					rotateLeft(t,s_node->right);
+					return;
+				// 조카의 색깔이 왼쪽만 빨강
+				} else if ((s_node->left->color == RBTREE_RED) & (s_node->right->color == RBTREE_BLACK)) {
+					s_node->color = RBTREE_RED;
+					s_node->left->color = RBTREE_BLACK;
+					rotateRight(t,s_node->left);
+					n = p_node->left;
+					n->parent = p_node;
+				// 조카 둘다 검정
+				// 현 부모노드를 새로운 n으로 바꾸고 와일문 다시 돌리기
+				} else {
+					s_node->color = RBTREE_RED;
+					n = p_node;
+				}
+
+			}
+		// n의 위치가 오른쪽
+		} else {
+			node_t *s_node = p_node->left; //형제노드
+			printf("n의 위치는 오른쪽 현재 노드와 형제 노드 : %d   %d   \n", n->key, s_node->key);
+
+			printf("형제노드 %d \n", s_node->key);
+			// 형제의 색깔이 빨강
+			// 부모와 형제의 색을 바꾸고 왼쪽으로 회전시킨다.
+			if(s_node->color == RBTREE_RED){
+				p_node->color = RBTREE_BLACK;
+				s_node->color = RBTREE_RED;
+				rotateRight(t,s_node->left);
+				return;
+			// 형제의 색깔이 검정 
+			} else {
+
+				// 오른쪽 조카의 색깔이 빨강
+				if(s_node->left->color == RBTREE_RED) {
+					s_node->color = p_node->color;
+					s_node->left->color = RBTREE_BLACK;
+					p_node->color = RBTREE_BLACK;
+					rotateRight(t,s_node->left);
+					return;
+				// 조카의 색깔이 오른쪽만 빨강
+				} else if ((s_node->right->color == RBTREE_RED) & (s_node->left->color == RBTREE_BLACK)) {
+					s_node->color = RBTREE_RED;
+					s_node->right->color = RBTREE_BLACK;
+					rotateLeft(t,s_node->right);
+					n = p_node->right;
+					n->parent = p_node;
+				// 조카 둘다 검정
+				// 현 부모노드를 새로운 n으로 바꾸고 와일문 다시 돌리기
+				} else {
+					printf("parent node %d \n", p_node->key);
+					s_node->color = RBTREE_RED;
+					n = p_node;
+				}
+			}
+		}
+	}
+	if (n->color == RBTREE_RED) {
+		printf("확인용 n = %d \n", n->key);
+		printf("확인용 n->color = %d \n", n->color);
+		n->color = RBTREE_BLACK;
+	}
+}
+
+node_t *find_successor(rbtree *t, node_t *p) {
+	
+	node_t *successor = p->right; 
+
+	while (successor->left != t->nil) {
+		successor = successor->left;
+	}
+
+	return successor;
 }
 
 int rbtree_erase(rbtree *t, node_t *p) {
 	// 삭제되는 애가 빨간색이면 변화 없음. 검정색일 경우 조건을 따져야 한다.
-
+	node_t *p_node = p->parent;
 	// 처음 확인 해야 하는 조건. 들어온 노드가 양쪽 다 자식을 가지고 있나?
 	// 자식이 둘다 있을 경우 석세서를 찾아서 걔의 키값을 p에 복사하고 석세서를 삭제한다.
 	// 석세서를 삭제
-	if ( p->left != t->nil & p->right != t->nil) {
-		node_t *search_successor = p->right;
-		node_t *pre_successor = t->nil;
-		while (search_successor->left != t->nil) {
-			search_successor = search_successor->left;
-		}
-		if (search_successor->color == RBTREE_BLACK) {
+	if ((p->left != t->nil) & (p->right != t->nil)) {
+		node_t *successor = find_successor(t,p);
+		printf("successor key : %d \n", successor->key);
+		// 삭제되는 석세서의 색깔이 검정색인가?
+		if (successor->color == RBTREE_BLACK) {
+			// p의 색깔이 검정색
+			if(p->color == RBTREE_BLACK) {
+				p->key = successor->key;
+				if(successor->parent == p) {
+					successor->parent->right = successor->right;
+					successor->right->parent = successor->parent;
+					
+					if(successor->color == RBTREE_RED){
+						successor->color = RBTREE_BLACK;	
+					} else {
+						check_double_black(t,successor->parent->right);
+					}
+				} else {
+					successor->parent->left= successor->right;
+					successor->right->parent = successor->parent;
 
+					if(successor->color == RBTREE_RED){
+						successor->color = RBTREE_BLACK;	
+					} else {
+						check_double_black(t,successor->parent->left);
+					}
+				}
+				
+				printf("%d 삭제\n", p->key);
+				free(successor);
+
+			// p의 색깔이 빨간색
+			} else {
+				p->key = successor->key;
+				p->color = RBTREE_BLACK;
+				successor->right->parent = successor->parent;
+				successor->parent->left = successor->right;
+				printf("%d 삭제\n", p->key);
+				free(successor);
+			}
+
+		// 삭제되는 석세서의 색깔이 빨간색인가?
 		} else {
-			p->key = search_successor->key;
-			
+			p->key = successor->key; // 삭제대상 키값을 석세서의 키값으로 변경
+			successor->right->parent = successor->parent; // 석세서의 부모와 석세서의 right와 연결
+			successor->parent->left = successor->right;
+			printf("%d 삭제\n", p->key);
+			free(successor); // 석세서 제거 
 		}
 		
 	// 자식이 둘 중에 하나라도 없으면 p를 삭제하고 대체할 놈을 찾는다.
 	// p를 삭제
 	} else {
-		
+		// p의 색깔이 검정색인가 
+		if(p->color == RBTREE_BLACK) {
+			// 자식이 없는가
+			if((p->left == t->nil) & (p->right == t->nil)){
+				// 첵 더블 블랙을 실행하고 free p
+				if(p_node == t->nil) {
+					check_double_black(t,p);
+				} else if(p_node->left == p) {
+					p_node->left = t->nil;
+					p_node->left->parent = p_node;
+					check_double_black(t,p_node->left);
+				} else {
+					p_node->right = t->nil;
+					p_node->right->parent = p_node;
+					check_double_black(t,p_node->right);
+				}
+
+				printf("%d 삭제\n", p->key);
+				free(p);
+				
+			// 자식이 있는가
+			} else {
+				if(p->left == t->nil){
+					
+					p->right->parent = p_node;
+					if(p->right->parent == t->nil){
+						t->root = p->right;
+						free(p);
+						t->root->color = RBTREE_BLACK;
+						return 0;
+					}
+					if(p_node->left == p){
+						p_node->left = p->right;
+					} else {
+						p_node->right = p->right;
+					}
+					
+					if(p->right->color == RBTREE_RED){
+						p->right->color = RBTREE_BLACK;	
+					} else {
+						check_double_black(t,p->right);
+					}
+
+					printf("%d 삭제\n", p->key);
+					free(p);
+				} else {
+					p->left->parent = p_node;
+					if(p->left->parent == t->nil){
+						t->root = p->left;
+						free(p);
+						t->root->color = RBTREE_BLACK;
+						return 0;
+					}
+					if(p_node->left == p){
+						p_node->left = p->left;
+					} else {
+						p_node->right = p->left;
+					}
+
+					if(p->left->color == RBTREE_RED){
+						p->left->color = RBTREE_BLACK;	
+					} else {
+						check_double_black(t,p->left);
+					}
+
+					printf("%d 삭제\n", p->key);
+					free(p);
+				}
+			}
+		// p의 색깔이 빨간색인가
+		} else {
+			//p의 자식 없음
+			//빨간 노드는 자식이 둘다 있거나 둘다 없거나 두가지 종류만 있음
+			if((p->right == t->nil) & (p->left == t->nil)){
+				printf("자식이 없는 빨간노드");
+				if(p->parent->right == p) {
+					p->parent->right = t->nil;
+					printf("%d 삭제\n", p->key);
+					free(p);
+				} else {
+					p->parent->left = t->nil;
+					printf("%d 삭제\n", p->key);
+					free(p);
+				}
+			}
+
+		}
 	}
+	t->root->color = RBTREE_BLACK;
 	return 0;
 }
 
