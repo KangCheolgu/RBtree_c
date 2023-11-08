@@ -1,7 +1,7 @@
 #include "rbtree.h"
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 void print_rbtree_node(const node_t *, const node_t *);
 void print_rbtree(const rbtree *);
 
@@ -19,6 +19,7 @@ int main(int argc, char *argv[])
 
     // 메인 루프
     int choice, key;
+	char keys;
     while (1)
     {
 		printf("\n\n");
@@ -27,16 +28,12 @@ int main(int argc, char *argv[])
 
         switch (choice)
         {
-            case 1: // 삽입
-				while(1){
-					printf("Input_Key_Value: ");
-					printf(">> ");
-					scanf("%d", &key);
-					if (key == -1){
-						break;
-					}
-					rbtree_insert(tree, key);
-				}
+			case 1: // 삽입
+    			printf(">>\n");
+                printf("Input_Key_Value: ");
+                scanf("%d", &key);
+                rbtree_insert(tree, key);
+    			print_rbtree(tree);
                 break;
 
             case 2: // 삭제
